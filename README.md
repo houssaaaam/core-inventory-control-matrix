@@ -1,10 +1,6 @@
 <!-- LIVE DEMO BUTTON LINK -->
 # 📦 Core Inventory Control Matrix
 
-[![Platform Status](https://img.shields.io/badge/Status-Production--Ready-10b981?style=flat-square)]()
-[![UI/UX Style](https://img.shields.io/badge/UI%2FUX-Cyber--Minimalism%20%282026%29-3b82f6?style=flat-square)]()
-[![Database Sync](https://img.shields.io/badge/Database-Supabase%20Real--Time-6366f1?style=flat-square)]()
-
 A state-of-the-art, high-retention SaaS B2B inventory orchestration and analytics suite. Built with a premium, hardware-accelerated dark theme, this platform moves beyond static data grids to provide managers and enterprise clients with glanceable data storytelling and predictive stock workflows.
 
 <!-- LIVE DEMO BUTTON LINK -->
