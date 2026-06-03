@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Core Inventory Control Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Inject this line right under your <title> tag -->
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📦</text></svg>">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div id="toast-container"></div>
+
+    <header class="app-header">
+        <div class="header-main">
+            <h1>Core Inventory Control Matrix</h1>
+            <div id="system-status">Connecting system loops to cloud database instance...</div>
+        </div>
+        <div class="header-actions">
+            <span id="role-display-indicator">Active Session: Loading...</span>
+            <select id="auth-role-select">
+                <option value="Admin">Admin (Full Access)</option>
+                <option value="Manager">Manager (Stock Only)</option>
+                <option value="Viewer">Viewer (Read Only)</option>
+            </select>
+            <button id="csv-export-btn" class="secondary-btn">📊 Export to CSV</button>
+            <button id="master-reset-btn" class="danger-btn">⚡ Reset Database</button>
+        </div>
+    </header>
+
+    <div id="predictive-insight-strip" style="background: linear-gradient(90deg, rgba(59,130,246,0.07) 0%, rgba(16,185,129,0.04) 100%); border: 1px dashed rgba(59, 130, 246, 0.3); padding: 14px 20px; border-radius: 10px; margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 0.9rem;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="font-size: 1.2rem;">✨</span>
+            <span style="color: #cbd5e1;"><strong style="color: #3b82f6;">Automated Insights:</strong> Higher velocity detected across your custom variant sets. Restock alerts are mapped below.</span>
+        </div>
+        <span style="font-family: monospace; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; background: rgba(59, 130, 246, 0.15); padding: 2px 8px; border-radius: 4px; color: #3b82f6; font-weight: bold;">System Optimized</span>
+    </div>
+
+    <main class="dashboard-grid">
+        <section class="metrics-row">
+            <div style="display: flex; flex-direction: column; gap: 16px;">
+                <div class="metric-card">
+                    <h3>Total Unique SKUs</h3>
+                    <p id="metric-skus">0</p>
+                </div>
+                <div class="metric-card">
+                    <h3>Asset Portfolio Value</h3>
+                    <p id="metric-value">$0.00</p>
+                </div>
+                <div class="metric-card">
+                    <h3>Low Stock Warnings</h3>
+                    <p id="metric-alerts">0</p>
+                </div>
+            </div>
+            
+            <div class="metric-card" style="display: flex; flex-direction: column; align-items: center; position: relative; min-height: 320px; padding: 24px;">
+                <h3 style="align-self: flex-start; margin-bottom: 20px; color: #94a3b8;">Asset Valuation Distribution</h3>
+                
+                <div style="position: relative; width: 100%; max-width: 200px; height: 200px; margin-bottom: 16px;">
+                    <canvas id="analytics-doughnut-chart"></canvas>
+                    <div id="chart-center-total" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; pointer-events: none; width: 100%;">
+                        <span style="display: block; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; font-weight: 600;">Total</span>
+                        <span id="chart-center-value" style="font-size: 1.15rem; font-weight: 700; color: #f8fafc;">$0.00</span>
+                    </div>
+                </div>
+
+                <div id="custom-chart-legend" style="display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; width: 100%; font-size: 0.8rem; font-weight: 500;"></div>
+            </div>
+        </section>
+
+        <section id="admin-controls-section" class="form-container-card">
+            <h2>Management Controls: Add New Stock Variant</h2>
+            <form id="product-form" class="horizontal-form-layout">
+                <input type="text" id="prod-title" placeholder="Product Title" required />
+                <input type="text" id="prod-sku" placeholder="SKU Identification Code" required />
+                <input type="number" id="prod-price" placeholder="Unit Price ($)" step="0.01" min="0" required />
+                <input type="number" id="prod-stock" placeholder="Initial Stock Level" min="0" required />
+                <input type="text" id="prod-category" placeholder="Category (e.g., Games)" required list="category-suggestions" autocomplete="off" />
+                <datalist id="category-suggestions"></datalist>
+                <button type="submit" class="success-btn">Add to Inventory</button>
+            </form>
+        </section>
+
+        <section class="inventory-display-card">
+            <div class="table-control-toolbar">
+                <div class="search-box-wrapper">
+                    <input type="text" id="search-input" placeholder="🔍 Search portfolio products by title or SKU string code..." />
+                </div>
+                <div class="filter-controls-wrapper">
+                    <select id="filter-category">
+                        <option value="All">All Categories</option>
+                    </select>
+                    <label class="checkbox-container-label" style="display:flex; align-items:center; color:#cbd5e1; gap:6px; cursor:pointer; user-select:none;">
+                        <input type="checkbox" id="filter-low-stock" style="cursor:pointer;" /> 
+                        <span>⚠️ Show Low Stock Only (&lt; 10)</span>
+                    </label>
+                </div>
+            </div>
+
+            <div id="batch-action-bar" style="display:none; align-items:center; justify-content:space-between; margin: 15px 0 10px 0; padding: 12px; background-color: #1e293b; border-left: 4px solid #ef4444; border-radius: 4px;">
+                <span id="batch-count-text" style="color: #cbd5e1; font-weight: 500;">0 items selected</span>
+                <button id="batch-delete-btn" style="background-color: #ef4444; color: white; padding: 6px 14px; border-radius: 4px; border: none; cursor: pointer; font-weight: 600;">🗑️ Delete Highlighted Records</button>
+            </div>
+
+            <div id="product-list-container" style="margin-top:15px;"></div>
+        </section>
+    </main>
+
+    <div id="checkout-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(6, 8, 20, 0.85); backdrop-filter: blur(8px); align-items: center; justify-content: center; z-index: 9999;">
+        <div style="background: #0f172a; border: 1px solid rgba(51, 65, 85, 0.5); padding: 24px; border-radius: 14px; width: 100%; max-width: 420px; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h2 style="color: #f8fafc; font-size: 1.25rem; font-weight: 700;">🛒 Simulate Customer Sale</h2>
+                <button id="close-modal-btn" style="background: none; border: none; color: #64748b; font-size: 1.5rem; cursor: pointer; padding: 4px;">&times;</button>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <p id="modal-product-title" style="color: #f8fafc; font-weight: 600; font-size: 1.1rem; margin-bottom: 4px;">Product Title</p>
+                <p id="modal-product-sku" style="color: #3b82f6; font-family: monospace; font-size: 0.9rem;">SKU: CODE</p>
+            </div>
+
+            <form id="checkout-form">
+                <input type="hidden" id="modal-product-id" />
+                <div style="margin-bottom: 16px;">
+                    <label style="display: block; color: #94a3b8; font-size: 0.85rem; margin-bottom: 6px; font-weight: 500;">Available Stock Level:</label>
+                    <input type="text" id="modal-available-stock" readonly style="background: #060814; color: #64748b; cursor: not-allowed; font-weight: bold; border-color: rgba(51, 65, 85, 0.3);" />
+                </div>
+                <div style="margin-bottom: 20px;">
+                    <label for="modal-checkout-qty" style="display: block; color: #cbd5e1; font-size: 0.85rem; margin-bottom: 6px; font-weight: 500;">Quantity to Purchase:</label>
+                    <input type="number" id="modal-checkout-qty" min="1" value="1" required style="background: #060814; color: #f8fafc;" />
+                </div>
+                <div style="background: #060814; padding: 14px; border-radius: 8px; margin-bottom: 24px; border: 1px solid rgba(51, 65, 85, 0.3);">
+                    <div style="display: flex; justify-content: space-between; color: #64748b; font-size: 0.85rem; margin-bottom: 6px;">
+                        <span>Unit Price:</span>
+                        <span id="modal-unit-price" style="font-family: monospace;">$0.00</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; color: #f8fafc; font-weight: 700; font-size: 1.05rem; border-top: 1px dashed rgba(51, 65, 85, 0.3); padding-top: 8px; margin-top: 8px;">
+                        <span>Estimated Total:</span>
+                        <span id="modal-total-cost" style="color: #10b981; font-family: monospace;">$0.00</span>
+                    </div>
+                </div>
+                <button type="submit" class="success-btn" style="width: 100%; padding: 12px; font-size: 1rem; border-radius: 8px;">Complete Transaction</button>
+            </form>
+        </div>
+    </div>
+
+    <script type="module" src="src/storage.js"></script>
+    <script type="module" src="src/engine.js"></script>
+    <script type="module" src="src/ui.js"></script>
+    <script type="module" src="src/app.js"></script>
+</body>
+</html>
